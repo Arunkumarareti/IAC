@@ -9,13 +9,13 @@ terraform {
 
 provider "azurerm" {
   features {}
-  subscription_id = "123efc84-f3ee-4390-b25c-70cefb0ed75c"
+  subscription_id = "eab45bec-3025-4b7b-b721-7c33c3075c29"
 }
 
 # Resource Group
 resource "azurerm_resource_group" "Task" {
-  name     = "Task-secure-3tier-rg"
-  location = "eastus"
+  name     = "Task-secure-3tier-Test-rg"
+  location = "uksouth"
 }
 
 # Virtual Network
@@ -49,6 +49,7 @@ resource "azurerm_subnet" "database" {
 }
 
 # Network Security Groups (NSGs)
+
 # Frontend NSG
 resource "azurerm_network_security_group" "frontend" {
   name                = "frontend-nsg"
@@ -63,7 +64,7 @@ resource "azurerm_network_security_group" "frontend" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_ranges    = ["80", "443"]
-    source_address_prefixes    = ["217.42.13.186/32"] # Replace ISP IP 
+    source_address_prefixes    = ["217.42.13.186/32"] # Replace with your ISP IP
     destination_address_prefix = "*"
   }
 
@@ -76,6 +77,7 @@ resource "azurerm_network_security_group" "frontend" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
     destination_port_range     = "*"
+    source_port_range          = "*"  # Add this line to specify source port range
   }
 }
 
@@ -91,9 +93,10 @@ resource "azurerm_network_security_group" "backend" {
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
-    source_address_prefix      = "10.0.1.0/24" # Frontend pubilc subnet allowed
+    source_address_prefix      = "10.0.1.0/24"  # Frontend subnet allowed
     destination_address_prefix = "*"
     destination_port_range     = "*"
+    source_port_range          = "*"  # Add source port range to this rule
   }
 
   security_rule {
@@ -105,6 +108,7 @@ resource "azurerm_network_security_group" "backend" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
     destination_port_range     = "*"
+    source_port_range          = "*"  # Add source port range to this rule
   }
 }
 
@@ -120,9 +124,10 @@ resource "azurerm_network_security_group" "database" {
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
-    source_address_prefix      = "10.0.2.0/24" # Backend subnet only allowed
+    source_address_prefix      = "10.0.2.0/24"  # Backend subnet allowed
     destination_address_prefix = "*"
     destination_port_range     = "*"
+    source_port_range          = "*"  # Add source port range to this rule
   }
 
   security_rule {
@@ -134,6 +139,7 @@ resource "azurerm_network_security_group" "database" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
     destination_port_range     = "*"
+    source_port_range          = "*"  # Add source port range to this rule
   }
 }
 
@@ -153,13 +159,32 @@ resource "azurerm_subnet_network_security_group_association" "database" {
   network_security_group_id = azurerm_network_security_group.database.id
 }
 
-# Public IP for Frontend
-resource "azurerm_public_ip" "frontend" {
-  name                = "frontend-public-ip"
+# Public IP for NAT Gateway
+resource "azurerm_public_ip" "frontend_nat_ip" {
+  name                = "frontend-nat-ip"
   location            = azurerm_resource_group.Task.location
   resource_group_name = azurerm_resource_group.Task.name
-  allocation_method   = "Static"
+  allocation_method   = "Static"  # Static IP for NAT Gateway
+  sku                 = "Standard"
+  
 }
 
 
+resource "azurerm_nat_gateway" "frontend_nat_gateway" {
+  name                = "frontend-nat-gateway"
+  location            = azurerm_resource_group.Task.location
+  resource_group_name = azurerm_resource_group.Task.name
+  # public_ip_address = azurerm_public_ip.frontend_nat_ip.id # Attach public IP to NAT gateway
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "frontend_nat_gateway_pubip" {
+  nat_gateway_id       = azurerm_nat_gateway.frontend_nat_gateway.id
+  public_ip_address_id = azurerm_public_ip.frontend_nat_ip.id
+}
+
+# Attach NAT Gateway to Frontend Subnet
+resource "azurerm_subnet_nat_gateway_association" "frontend_subnet_nat" {
+  subnet_id      = azurerm_subnet.frontend.id
+  nat_gateway_id = azurerm_nat_gateway.frontend_nat_gateway.id
+}
 
