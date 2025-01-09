@@ -12,13 +12,13 @@ provider "azurerm" {
   subscription_id = "eab45bec-3025-4b7b-b721-7c33c3075c29"
 }
 
-# Resource Group
+
 resource "azurerm_resource_group" "Task" {
   name     = "Task-secure-3tier-Test-rg"
   location = "uksouth"
 }
 
-# Virtual Network
+
 resource "azurerm_virtual_network" "Task" {
   name                = "Task-3tier-vnet"
   address_space       = ["10.0.0.0/16"]
@@ -50,7 +50,6 @@ resource "azurerm_subnet" "database" {
 
 # Network Security Groups (NSGs)
 
-# Frontend NSG
 resource "azurerm_network_security_group" "frontend" {
   name                = "frontend-nsg"
   location            = azurerm_resource_group.Task.location
@@ -81,7 +80,7 @@ resource "azurerm_network_security_group" "frontend" {
   }
 }
 
-# Backend NSG
+
 resource "azurerm_network_security_group" "backend" {
   name                = "backend-nsg"
   location            = azurerm_resource_group.Task.location
@@ -112,7 +111,7 @@ resource "azurerm_network_security_group" "backend" {
   }
 }
 
-# Database NSG
+
 resource "azurerm_network_security_group" "database" {
   name                = "database-nsg"
   location            = azurerm_resource_group.Task.location
@@ -159,7 +158,6 @@ resource "azurerm_subnet_network_security_group_association" "database" {
   network_security_group_id = azurerm_network_security_group.database.id
 }
 
-# Public IP for NAT Gateway
 resource "azurerm_public_ip" "frontend_nat_ip" {
   name                = "frontend-nat-ip"
   location            = azurerm_resource_group.Task.location
