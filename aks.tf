@@ -32,7 +32,6 @@ resource "azurerm_kubernetes_cluster" "fe_aks_cluster" {
   }
 }
 
-# Output the AKS cluster kubeconfig
 output "kube_config" {
   value = azurerm_kubernetes_cluster.fe_aks_cluster.kube_config_raw
   sensitive = true
